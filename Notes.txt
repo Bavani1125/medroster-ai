@@ -1,0 +1,11 @@
+if scheduled patient gets rescheduled due to doctor attending emergency patient:
+
+Priority reschedule within 24 hrs
+
+Upgrade to private room
+
+Extra follow-up consultation
+
+Waived certain minor fees
+
+Patient experience recovery action
