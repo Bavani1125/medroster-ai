@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String
 from app.db import Base
 
 
@@ -7,6 +7,4 @@ class Doctor(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    specialization = Column(String, nullable=False)
-    current_load = Column(Integer, default=0)
-    is_available = Column(Boolean, default=True)
+    specialty = Column(String, nullable=False)
