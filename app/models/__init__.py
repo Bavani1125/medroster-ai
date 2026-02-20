@@ -1,5 +1,7 @@
 from .doctor import Doctor
-from .patients import Patient
+from .patient import Patient
+from .association import doctor_patient_association
 from .surgery import Surgery
 from .assignment import Assignment
+
 
