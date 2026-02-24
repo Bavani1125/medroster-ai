@@ -1,13 +1,23 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
-    role = Column(String, nullable=False)  # admin | doctor | manager
+    role = Column(String, nullable=False)
     password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+
+    department_id = Column(
+        Integer,
+        ForeignKey("departments.id"),
+        nullable=True
+    )
+
+    department = relationship("Department", back_populates="users")
+    assignments = relationship("Assignment", back_populates="user")

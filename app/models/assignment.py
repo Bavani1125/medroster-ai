@@ -4,12 +4,14 @@ from app.database import Base
 
 
 class Assignment(Base):
-    __tablename__ = "assignment"
+    __tablename__ = "assignments"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("user.id"))
-    shift_id = Column(Integer, ForeignKey("shift.id"))
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=False)
+
     is_emergency = Column(Boolean, default=False)
 
-    user = relationship("User")
-    shift = relationship("Shift")
+    user = relationship("User", back_populates="assignments")
+    shift = relationship("Shift", back_populates="assignments")
