@@ -1,46 +1,70 @@
-# Getting Started with Create React App
+## Modern React (Create React App) UI for MedRoster — an AI-powered hospital staff coordination platform with:
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Admin portal: departments, shifts, assignments, safety mode
 
-## Available Scripts
+AI scheduling + workload insights
 
-In the project directory, you can run:
+ElevenLabs voice: announcements + emergency broadcast previews
 
-### `npm start`
+Patient-facing Public Voice Updates (no login, no PHI): /public/updates
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+# UI Highlights
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Public Voice Updates: multilingual (EN/ES) voice updates for patients/families (QR/kiosk-friendly).
 
-### `npm test`
+Emergency Broadcast: voice announcements for critical events (demo-ready).
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Safety Mode: burnout guard + supervisor briefing (voice-enabled concept).
 
-### `npm run build`
+# Tech Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+React (CRA)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+TypeScript
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Material UI (MUI)
 
-### `npm run eject`
+Axios
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+React Router
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# Project Structure
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+medroster-frontend/
+├── src/
+│   ├── api/
+│   │   ├── client.ts            # axios client + auth token interceptor
+│   │   └── index.ts             # API wrappers (auth, users, ai, public)
+│   ├── components/
+│   │   ├── Navbar.tsx
+│   │   ├── PrivateRoute.tsx
+│   │   ├── PermissionGuard.tsx
+│   │   ├── PublicUpdatesPanel.tsx
+│   │   ├── EmergencyBroadcastPanel.tsx
+│   │   └── SafetyModePanel.tsx
+│   ├── context/
+│   │   └── AuthContext.tsx      # auth state + token storage
+│   ├── pages/
+│   │   ├── AuthPage.tsx
+│   │   ├── DashboardPage.tsx
+│   │   └── PublicUpdatesPage.tsx  # patient-facing page (no login)
+│   ├── App.tsx                  # routes
+│   └── index.tsx
+├── package.json
+└── README.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## Setup
 
-## Learn More
+1) Install dependencies
+    npm install
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+2) Configure Backend URL
+    By default, the frontend calls:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+    http://localhost:8000
+
+    If your backend runs elsewhere, create a .env in medroster-frontend/:
+    REACT_APP_API_URL=http://127.0.0.1:8000
+
+3) Run the frontend
+    npm start

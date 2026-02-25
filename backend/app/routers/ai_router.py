@@ -1,3 +1,5 @@
+
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 from typing import List, Optional, Dict, Any
@@ -8,7 +10,7 @@ from app.services.ai_service import (
     get_scheduling_suggestion,
     analyze_workload_fairness,
     get_scheduling_tip,
-    text_to_speech_elevenlabs,   # <-- NEW: ElevenLabs base64 audio
+    text_to_speech_elevenlabs,   # base64 audio
 )
 
 router = APIRouter(prefix="/ai", tags=["AI Scheduling"])
@@ -42,24 +44,21 @@ class WorkloadRequest(BaseModel):
 
 
 class TextToSpeechRequest(BaseModel):
-    # Make ONLY text required; this avoids 422 if UI doesn't send filename
-    text: str = Field(..., min_length=1)
+    # accept both keys to avoid 422 from different clients
+    text: Optional[str] = None
+    message: Optional[str] = None
+
+    # optional advanced controls (safe defaults)
     voice_id: Optional[str] = None
-    model_id: str = "eleven_multilingual_v2"
+    tts_model_id: str = "eleven_multilingual_v2"
     stability: float = 0.4
     similarity_boost: float = 0.8
 
 
 def _normalize_schedule_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize incoming schedule payloads to the expected ScheduleRequest shape.
-
-    Accepts common alternate keys from different clients and returns a dict
-    suitable for `ScheduleRequest.model_validate`.
-    """
     if not isinstance(payload, dict):
         return {"staff": [], "shifts": [], "context": ""}
 
-    # staff variants
     staff_raw = payload.get("staff") or payload.get("staff_list") or payload.get("workers") or []
     normalized_staff = []
     for s in staff_raw:
@@ -72,7 +71,6 @@ def _normalize_schedule_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
             "last_shift": s.get("last_shift") or s.get("last")
         })
 
-    # shift variants
     shifts_raw = payload.get("shifts") or payload.get("shift_requirements") or payload.get("shift_list") or []
     normalized_shifts = []
     for sh in shifts_raw:
@@ -87,7 +85,6 @@ def _normalize_schedule_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         })
 
     context = payload.get("context") or payload.get("note") or ""
-
     return {"staff": normalized_staff, "shifts": normalized_shifts, "context": context}
 
 
@@ -98,7 +95,6 @@ def suggest_schedule(
     request_payload: Dict[str, Any],
     current_user: User = Depends(get_current_user)
 ):
-    # Accept flexible payloads from various clients. Map common alternate keys
     try:
         normalized = _normalize_schedule_payload(request_payload)
         request = ScheduleRequest.model_validate(normalized)
@@ -173,35 +169,30 @@ def text_to_speech(
     current_user: User = Depends(get_current_user)
 ):
     """
-    🔊 Text-to-Speech via ElevenLabs
-    Returns base64 audio so frontend can play it immediately.
-
-    Request:
-      { "text": "..." }
-
-    Response:
-      {
-        "audio_base64": "...",
-        "content_type": "audio/mpeg",
-        "voice_id": "...",
-        "model_id": "...",
-        "text": "..."
-      }
+    Returns base64 audio (browser-playable) instead of file path.
+    Request: { "text": "..." } or { "message": "..." }
+    Response: { "audio_base64": "...", "content_type": "audio/mpeg", ... }
     """
     try:
-        result = text_to_speech_elevenlabs(
-            text=request.text,
+        text = (request.text or request.message or "").strip()
+        if not text:
+            raise HTTPException(status_code=422, detail="Missing required field: text")
+
+        return text_to_speech_elevenlabs(
+            text=text,
             voice_id=request.voice_id,
-            model_id=request.model_id,
+            model_id=request.tts_model_id,
             stability=request.stability,
-            similarity_boost=request.similarity_boost
+            similarity_boost=request.similarity_boost,
         )
-        return result
+
+    except HTTPException:
+        raise
     except ValueError as e:
-        # missing env, missing text
+        # missing env vars
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
-        # ElevenLabs API failure
+        # ElevenLabs API error
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Text-to-speech error: {str(e)}")

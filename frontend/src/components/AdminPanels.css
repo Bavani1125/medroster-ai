@@ -1,0 +1,70 @@
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 2rem 2.5rem 2rem 2.5rem;
+  margin: 2rem auto;
+  max-width: 480px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+  color: #2d3748;
+}
+
+.panel label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+.panel select,
+.panel input[type="range"],
+.panel input[type="checkbox"],
+.panel button {
+  margin-top: 0.4rem;
+  font-size: 1rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.panel button {
+  background: #3182ce;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.panel button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.panel .output {
+  margin-top: 1rem;
+  background: #f7fafc;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.panel .transcript {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #2d3748;
+}
+
+.panel .ack-list ul {
+  margin: 0.5rem 0 0 1rem;
+  padding: 0;
+  color: #22543d;
+}

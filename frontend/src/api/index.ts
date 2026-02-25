@@ -24,17 +24,13 @@ export const userAPI = {
   getAllUsers: () => client.get('/users/'),
   getUser: (userId: number) => client.get(`/users/${userId}`),
   updateUser: (userId: number, data: any) => client.patch(`/users/${userId}`, data),
-  getUsersByRole: (role: string) => client.get(`/users/role/${role}`),
-  getUsersByDepartment: (deptId: number) => client.get(`/users/department/${deptId}`),
 };
 
 // Department APIs
 export const departmentAPI = {
-  createDepartment: (data: { name: string; description: string }) =>
-    client.post('/departments', data),
+  createDepartment: (data: { name: string; description: string }) => client.post('/departments', data),
   getDepartments: () => client.get('/departments'),
   getDepartment: (deptId: number) => client.get(`/departments/${deptId}`),
-  updateDepartment: (deptId: number, data: any) => client.patch(`/departments/${deptId}`, data),
   deleteDepartment: (deptId: number) => client.delete(`/departments/${deptId}`),
 };
 
@@ -49,49 +45,49 @@ export const shiftAPI = {
   }) => client.post('/shifts', data),
   getShifts: () => client.get('/shifts'),
   getShift: (shiftId: number) => client.get(`/shifts/${shiftId}`),
-  getShiftsByDepartment: (deptId: number) => client.get(`/shifts/department/${deptId}`),
   updateShift: (shiftId: number, data: any) => client.patch(`/shifts/${shiftId}`, data),
   deleteShift: (shiftId: number) => client.delete(`/shifts/${shiftId}`),
 };
 
 // Assignment APIs
 export const assignmentAPI = {
-  createAssignment: (data: {
-    user_id: number;
-    shift_id: number;
-    is_emergency: boolean;
-  }) => client.post('/assignments', data),
+  createAssignment: (data: { user_id: number; shift_id: number; is_emergency: boolean }) =>
+    client.post('/assignments', data),
   getAssignments: () => client.get('/assignments'),
   getAssignment: (assignmentId: number) => client.get(`/assignments/${assignmentId}`),
-  getAssignmentsByUser: (userId: number) => client.get(`/assignments/user/${userId}`),
-  getAssignmentsByShift: (shiftId: number) => client.get(`/assignments/shift/${shiftId}`),
-  updateAssignment: (assignmentId: number, data: any) => client.patch(`/assignments/${assignmentId}`, data),
   deleteAssignment: (assignmentId: number) => client.delete(`/assignments/${assignmentId}`),
 };
 
-// AI APIs - OpenAI & 11 Labs Integration
+// ✅ AI APIs (FIXED)
 export const aiAPI = {
-  // Get scheduling suggestions using OpenAI
+  /**
+   * Your backend endpoint accepts a schedule payload.
+   * Keep your existing usage as-is if it’s already wired.
+   */
   getSchedulingSuggestions: (shiftId: number) =>
     client.post('/ai/schedule-suggestions', { shift_id: shiftId }),
-  
-  // Generate announcement using OpenAI
+
+  /**
+   * If you have a backend route for announcement generation.
+   * If not used, keep it harmless.
+   */
   generateAnnouncement: (message: string) =>
     client.post('/ai/generate-announcement', { message }),
-  
-  // Convert text to speech using 11 Labs
-  textToSpeech: (message: string, language: string = 'en') =>
-    client.post('/ai/text-to-speech', { message, language }, { responseType: 'blob' }),
-  
-  // Get scheduling recommendations
-  getRecommendations: (departmentId: number, criteria?: any) =>
-    client.post(`/ai/recommendations`, { department_id: departmentId, ...criteria }),
-  
-  // Analyze workload
-  analyzeWorkload: (departmentId: number) =>
-    client.post('/ai/analyze-workload', { department_id: departmentId }),
-  
-  // Get AI tip
+
+  /**
+   * ✅ FIX: Text-to-speech must return JSON {audio_base64, content_type}.
+   * Do NOT request blob.
+   */
+  textToSpeech: (message: string) =>
+    client.post(
+      '/ai/text-to-speech',
+      { text: message },
+      { responseType: 'json' } // ensures res.data is an object, not Blob
+    ),
+
+  analyzeWorkload: (data: { staff_data: any[] }) =>
+    client.post('/ai/analyze-workload', data),
+
   getTip: () => client.get('/ai/tip'),
 };
 
@@ -101,4 +97,14 @@ export const emergencyAPI = {
     client.post('/emergency/red-alert', data),
   resolve: (data: { department_id: number }) =>
     client.post('/emergency/resolve', data),
+};
+
+export const publicAPI = {
+  getDepartments: () => client.get('/public/departments'),
+  generateVoiceUpdate: (payload: {
+    department_id: number;
+    language: 'en' | 'es';
+    update_type: 'wait_time' | 'visiting' | 'directions' | 'safety';
+    custom_note?: string;
+  }) => client.post('/public/voice-update', payload, { responseType: 'json' }),
 };
