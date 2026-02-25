@@ -34,7 +34,6 @@ export const departmentAPI = {
     client.post('/departments', data),
   getDepartments: () => client.get('/departments'),
   getDepartment: (deptId: number) => client.get(`/departments/${deptId}`),
-  updateDepartment: (deptId: number, data: any) => client.patch(`/departments/${deptId}`, data),
   deleteDepartment: (deptId: number) => client.delete(`/departments/${deptId}`),
 };
 
@@ -49,7 +48,6 @@ export const shiftAPI = {
   }) => client.post('/shifts', data),
   getShifts: () => client.get('/shifts'),
   getShift: (shiftId: number) => client.get(`/shifts/${shiftId}`),
-  getShiftsByDepartment: (deptId: number) => client.get(`/shifts/department/${deptId}`),
   updateShift: (shiftId: number, data: any) => client.patch(`/shifts/${shiftId}`, data),
   deleteShift: (shiftId: number) => client.delete(`/shifts/${shiftId}`),
 };
@@ -63,9 +61,6 @@ export const assignmentAPI = {
   }) => client.post('/assignments', data),
   getAssignments: () => client.get('/assignments'),
   getAssignment: (assignmentId: number) => client.get(`/assignments/${assignmentId}`),
-  getAssignmentsByUser: (userId: number) => client.get(`/assignments/user/${userId}`),
-  getAssignmentsByShift: (shiftId: number) => client.get(`/assignments/shift/${shiftId}`),
-  updateAssignment: (assignmentId: number, data: any) => client.patch(`/assignments/${assignmentId}`, data),
   deleteAssignment: (assignmentId: number) => client.delete(`/assignments/${assignmentId}`),
 };
 

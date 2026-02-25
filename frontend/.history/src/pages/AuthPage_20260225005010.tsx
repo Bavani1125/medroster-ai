@@ -35,8 +35,10 @@ export const AuthPage: React.FC = () => {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Login state
   const [loginData, setLoginData] = useState({ email: '', password: '' });
 
+  // Register state
   const [registerData, setRegisterData] = useState({
     name: '',
     email: '',
@@ -48,11 +50,10 @@ export const AuthPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      await login(loginData.email.trim(), loginData.password);
+      await login(loginData.email, loginData.password);
       navigate('/dashboard');
     } catch (err: any) {
-      console.log('LOGIN_ERROR:', err?.response?.data || err);
-      setError(err?.response?.data?.detail || 'Login failed. Please try again.');
+      setError(err.response?.data?.detail || 'Login failed. Please try again.');
     }
   };
 
@@ -60,17 +61,12 @@ export const AuthPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      await register({
-        name: registerData.name.trim(),
-        email: registerData.email.trim(),
-        password: registerData.password,
-        role: registerData.role,
-      });
+      await register(registerData);
+      setError(null);
       setTab(0);
       setLoginData({ email: registerData.email, password: registerData.password });
     } catch (err: any) {
-      console.log('REGISTER_ERROR:', err?.response?.data || err);
-      setError(err?.response?.data?.detail || 'Registration failed. Please try again.');
+      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     }
   };
 
@@ -81,17 +77,14 @@ export const AuthPage: React.FC = () => {
           🏥 MedRoster
         </Typography>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         <Tabs value={tab} onChange={(_, newValue) => setTab(newValue)} sx={{ width: '100%' }}>
           <Tab label="Login" />
           <Tab label="Register" />
         </Tabs>
 
+        {/* Login Tab */}
         <TabPanel value={tab} index={0}>
           <form onSubmit={handleLoginSubmit}>
             <TextField
@@ -100,7 +93,6 @@ export const AuthPage: React.FC = () => {
               type="email"
               margin="normal"
               value={loginData.email}
-              autoComplete="email"
               onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
               required
             />
@@ -110,7 +102,6 @@ export const AuthPage: React.FC = () => {
               type="password"
               margin="normal"
               value={loginData.password}
-              autoComplete="current-password"
               onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
               required
             />
@@ -128,6 +119,7 @@ export const AuthPage: React.FC = () => {
           </form>
         </TabPanel>
 
+        {/* Register Tab */}
         <TabPanel value={tab} index={1}>
           <form onSubmit={handleRegisterSubmit}>
             <TextField
@@ -135,7 +127,6 @@ export const AuthPage: React.FC = () => {
               label="Full Name"
               margin="normal"
               value={registerData.name}
-              autoComplete="name"
               onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
               required
             />
@@ -145,7 +136,6 @@ export const AuthPage: React.FC = () => {
               type="email"
               margin="normal"
               value={registerData.email}
-              autoComplete="email"
               onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
               required
             />
@@ -155,7 +145,6 @@ export const AuthPage: React.FC = () => {
               type="password"
               margin="normal"
               value={registerData.password}
-              autoComplete="new-password"
               onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
               required
             />
@@ -174,7 +163,6 @@ export const AuthPage: React.FC = () => {
               <option value="manager">Manager</option>
               <option value="admin">Admin</option>
             </TextField>
-
             <Button
               fullWidth
               variant="contained"

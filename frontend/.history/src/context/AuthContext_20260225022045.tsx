@@ -1,13 +1,12 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import axios from 'axios';
 import { authAPI } from '../api';
-import { UserRole } from '../types';
 
 interface User {
   id: number;
   name: string;
   email: string;
-  role: UserRole;
+  role: string;
   department_id?: number;
 }
 
@@ -15,7 +14,7 @@ interface RegisterInput {
   name: string;
   email: string;
   password: string;
-  role: UserRole;
+  role: string;
   department_id: number;
 }
 
@@ -86,7 +85,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const payload: RegisterInput = {
         ...data,
-        role: (data.role as UserRole) || 'staff',
         department_id: 0, // REQUIRED by backend schema (Swagger shows this)
       };
 

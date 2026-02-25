@@ -324,8 +324,8 @@ export const DashboardPage: React.FC = () => {
 
         <Stack spacing={3}>
           {/* Stats Cards */}
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+          <Grid container spacing={2}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -336,9 +336,9 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -349,9 +349,9 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -362,9 +362,9 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+            <Grid xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -375,8 +375,8 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
-          </Box>
+            </Grid>
+          </Grid>
 
           {/* AI Section */}
           <PermissionGuard permission="manage_departments">
@@ -432,9 +432,9 @@ export const DashboardPage: React.FC = () => {
                 </Button>
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Grid container spacing={2}>
                 {departments.map((dept) => (
-                  <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(33.33% - 12px)' } }} key={dept.id}>
+                  <Grid xs={12} sm={6} md={4} key={dept.id}>
                     <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef', '&:hover': { boxShadow: 3 } }}>
                       <CardContent>
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -445,9 +445,9 @@ export const DashboardPage: React.FC = () => {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Box>
+                  </Grid>
                 ))}
-              </Box>
+              </Grid>
             </Paper>
           </PermissionGuard>
 

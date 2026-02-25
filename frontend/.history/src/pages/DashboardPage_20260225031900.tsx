@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Container,
+  Grid,
   Paper,
   Typography,
   Card,
@@ -20,14 +21,17 @@ import {
   TableHead,
   TableRow,
   Stack,
-  Grid,
 } from '@mui/material';
-
-import { departmentAPI, shiftAPI, userAPI, aiAPI, assignmentAPI } from '../api';
+import {
+  departmentAPI,
+  shiftAPI,
+  userAPI,
+  aiAPI,
+  assignmentAPI,
+} from '../api';
 import { useAuth } from '../context/AuthContext';
 import { PermissionGuard } from '../components/PermissionGuard';
 import { ROLE_LABELS, getRoleColor, getRoleBgColor } from '../utils/roleUtils';
-
 import AddIcon from '@mui/icons-material/Add';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
@@ -96,6 +100,7 @@ export const DashboardPage: React.FC = () => {
     required_staff_count: 1,
   });
 
+  // Build maps for fast lookups (stable UI + less re-render work)
   const deptById = useMemo(() => {
     const m = new Map<number, Department>();
     departments.forEach((d) => m.set(d.id, d));
@@ -129,6 +134,7 @@ export const DashboardPage: React.FC = () => {
       setAssignments(assignRes.data || []);
       setError(null);
 
+      // Ensure default shift department uses a real department if available
       const firstDeptId = (deptRes.data?.[0]?.id as number | undefined) ?? 1;
       setNewShift((prev) => ({ ...prev, department_id: firstDeptId }));
     } catch (err: any) {
@@ -170,6 +176,7 @@ export const DashboardPage: React.FC = () => {
     }
 
     try {
+      // Convert datetime-local -> ISO
       const startISO = new Date(newShift.start_time).toISOString();
       const endISO = new Date(newShift.end_time).toISOString();
 
@@ -204,36 +211,73 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  /**
-   * ✅ FIXED: Use the aiAPI methods that EXIST in your project typings.
-   * Your aiAPI currently has:
-   * - getSchedulingSuggestions(shiftId: number)
-   * - generateAnnouncement(message: string)
-   * - textToSpeech(message: string, language?: string)
-   * - analyzeWorkload(...)
-   *
-   * So we call getSchedulingSuggestions with the first shift id.
-   */
+  // ✅ Correct AI call: /ai/suggest-schedule expects { staff: [...], shifts: [...] }
   const handleAISuggestions = async () => {
     setAiSuggestion('');
-
     if (shifts.length === 0) {
       setAiSuggestion('No shifts available for scheduling suggestions.');
+      return;
+    }
+    if (users.length === 0) {
+      setAiSuggestion('No staff available for scheduling suggestions.');
       return;
     }
 
     setAiLoading(true);
     try {
-      const shiftId = shifts[0].id;
-      const res = await aiAPI.getSchedulingSuggestions(shiftId);
+      // Convert users/shifts to the exact schema backend expects
+      const staffPayload = users.map((u) => ({
+        name: u.name,
+        role: u.role,
+        hours_this_week: 0,
+        last_shift: null,
+      }));
 
-      // Your API seems to return { reasoning: "..."} or something similar.
-      const reasoning =
-        res.data?.reasoning ||
-        res.data?.ai_suggestion?.summary ||
-        'AI suggestions generated successfully.';
+      const shiftPayload = shifts.map((s) => ({
+        shift_id: String(s.id),
+        role_needed: s.required_role,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        department: deptById.get(s.department_id)?.name || `Dept-${s.department_id}`,
+      }));
 
-      setAiSuggestion(reasoning);
+      const res = await aiAPI.suggestSchedule({
+        staff: staffPayload,
+        shifts: shiftPayload,
+        context: 'Generate fair schedule suggestions with burnout prevention.',
+      });
+
+      // Backend returns: { ai_suggestion: { assignments, warnings, summary }, model }
+      const suggestion = res.data?.ai_suggestion;
+
+      if (!suggestion) {
+        setAiSuggestion('AI did not return a suggestion payload.');
+      } else {
+        const lines: string[] = [];
+
+        if (suggestion.summary) lines.push(`Summary: ${suggestion.summary}`);
+
+        if (Array.isArray(suggestion.warnings) && suggestion.warnings.length > 0) {
+          lines.push('');
+          lines.push('Warnings:');
+          suggestion.warnings.forEach((w: string) => lines.push(`- ${w}`));
+        }
+
+        if (Array.isArray(suggestion.assignments) && suggestion.assignments.length > 0) {
+          lines.push('');
+          lines.push('Suggested Assignments:');
+          suggestion.assignments.slice(0, 10).forEach((a: any) => {
+            lines.push(
+              `- ${a.staff_name} (${a.staff_role}) → Shift ${a.shift_id} (${a.department}) — ${a.reason}`
+            );
+          });
+          if (suggestion.assignments.length > 10) {
+            lines.push(`...and ${suggestion.assignments.length - 10} more`);
+          }
+        }
+
+        setAiSuggestion(lines.join('\n'));
+      }
     } catch (err: any) {
       console.log('AI_SUGGEST_ERROR', err?.response?.data || err);
       setAiSuggestion(err?.response?.data?.detail || 'Unable to generate AI suggestions at this time.');
@@ -242,33 +286,26 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  /**
-   * ✅ FIXED: textToSpeech expects a STRING (per your typings)
-   */
+  // ✅ Correct ElevenLabs call: /ai/text-to-speech expects { text }
+  // and returns { audio_base64, content_type }
   const handleTextToSpeech = async () => {
     setTtsLoading(true);
     try {
       const message =
         'Attention staff. Please check your assignments for upcoming shifts. This is an automated MedRoster announcement.';
 
-      const res = await aiAPI.textToSpeech(message);
+      const res = await aiAPI.textToSpeech({ text: message });
 
-      // Your backend was updated to return base64 audio. If your current backend still returns a file,
-      // this will fail. We support BOTH.
       const audioBase64 = res.data?.audio_base64;
       const contentType = res.data?.content_type || 'audio/mpeg';
 
-      if (audioBase64) {
-        const audioSrc = `data:${contentType};base64,${audioBase64}`;
-        const audio = new Audio(audioSrc);
-        await audio.play();
-      } else {
-        // fallback if backend returns a blob/stream (older implementation)
-        // This is best-effort; if res.data is JSON, it won't play and will throw.
-        const audioUrl = URL.createObjectURL(res.data);
-        const audio = new Audio(audioUrl);
-        await audio.play();
+      if (!audioBase64) {
+        throw new Error('No audio_base64 returned from server.');
       }
+
+      const audioSrc = `data:${contentType};base64,${audioBase64}`;
+      const audio = new Audio(audioSrc);
+      await audio.play();
     } catch (err: any) {
       console.log('TTS_ERROR', err?.response?.data || err);
       setAiSuggestion(err?.response?.data?.detail || 'Text-to-speech failed. Check ElevenLabs API config.');
@@ -324,8 +361,8 @@ export const DashboardPage: React.FC = () => {
 
         <Stack spacing={3}>
           {/* Stats Cards */}
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -336,9 +373,9 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -349,9 +386,9 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -362,9 +399,9 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
+            </Grid>
 
-            <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(25% - 12px)' } }}>
+            <Grid item xs={12} sm={6} md={3}>
               <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef' }}>
                 <CardContent>
                   <Typography sx={{ color: 'text.secondary' }} gutterBottom>
@@ -375,10 +412,10 @@ export const DashboardPage: React.FC = () => {
                   </Typography>
                 </CardContent>
               </Card>
-            </Box>
-          </Box>
+            </Grid>
+          </Grid>
 
-          {/* AI Section */}
+          {/* AI & Admin Section */}
           <PermissionGuard permission="manage_departments">
             <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: '1px solid #e6e8ef' }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -432,9 +469,9 @@ export const DashboardPage: React.FC = () => {
                 </Button>
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Grid container spacing={2}>
                 {departments.map((dept) => (
-                  <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(33.33% - 12px)' } }} key={dept.id}>
+                  <Grid item xs={12} sm={6} md={4} key={dept.id}>
                     <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef', '&:hover': { boxShadow: 3 } }}>
                       <CardContent>
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -445,9 +482,9 @@ export const DashboardPage: React.FC = () => {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Box>
+                  </Grid>
                 ))}
-              </Box>
+              </Grid>
             </Paper>
           </PermissionGuard>
 
@@ -518,15 +555,28 @@ export const DashboardPage: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {assignments.slice(0, 10).map((a) => {
-                      const assignedUser = userById.get(a.user_id);
+                    {assignments.slice(0, 10).map((assignment) => {
+                      const assignedUser = userById.get(assignment.user_id);
                       return (
-                        <TableRow key={a.id} hover>
-                          <TableCell>{assignedUser?.name || `User-${a.user_id}`}</TableCell>
-                          <TableCell>{assignedUser?.role || '—'}</TableCell>
-                          <TableCell>#{a.shift_id}</TableCell>
+                        <TableRow key={assignment.id} hover>
+                          <TableCell>{assignedUser?.name || `User-${assignment.user_id}`}</TableCell>
                           <TableCell>
-                            {a.is_emergency ? <Chip label="Yes" color="error" size="small" /> : <Chip label="No" color="success" size="small" />}
+                            <Chip
+                              label={assignedUser?.role || '—'}
+                              size="small"
+                              sx={{
+                                bgcolor: getRoleBgColor(((assignedUser?.role as any) || 'staff') as any),
+                                color: getRoleColor(((assignedUser?.role as any) || 'staff') as any),
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>#{assignment.shift_id}</TableCell>
+                          <TableCell>
+                            {assignment.is_emergency ? (
+                              <Chip label="Yes" color="error" size="small" />
+                            ) : (
+                              <Chip label="No" color="success" size="small" />
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -584,7 +634,7 @@ export const DashboardPage: React.FC = () => {
           </Paper>
         </Stack>
 
-        {/* Dialog */}
+        {/* Dialog for Creating Department & Shift */}
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
           <Box sx={{ p: 3 }}>
             {dialogType === 'department' ? (

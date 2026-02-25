@@ -1,37 +1,39 @@
 """
 MedRoster AI Service
 Uses OpenAI GPT-4o for intelligent scheduling, workload analysis,
-and emergency reallocation planning.
+and emergency reallocation planning, plus ElevenLabs for voice announcements.
 """
 
+import base64
 import json
+from typing import Any, Dict, List, Optional
+
+import requests
 from openai import OpenAI
-from app.config import OPENAI_API_KEY
+
+from app.config import OPENAI_API_KEY, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID
 
 
-def _get_client():
+# -----------------------------
+# OpenAI
+# -----------------------------
+def _get_openai_client() -> OpenAI:
     if not OPENAI_API_KEY or OPENAI_API_KEY == "your_openai_key_here":
         raise ValueError("OPENAI_API_KEY is not set in your .env file")
     return OpenAI(api_key=OPENAI_API_KEY)
 
 
 def get_scheduling_suggestion(
-    staff_list: list,
-    shift_requirements: list,
+    staff_list: List[Dict[str, Any]],
+    shift_requirements: List[Dict[str, Any]],
     context: str = ""
-) -> dict:
+) -> Dict[str, Any]:
     """
     AI suggests optimal staff-to-shift assignments.
-
-    Args:
-        staff_list: [{"name": str, "role": str, "hours_this_week": int, "last_shift": str}]
-        shift_requirements: [{"shift_id": str, "role_needed": str, "start_time": str, "department": str}]
-        context: e.g. "flu season surge"
-
     Returns:
-        {"assignments": [...], "warnings": [...], "summary": str}
+      {"assignments": [...], "warnings": [...], "summary": str}
     """
-    client = _get_client()
+    client = _get_openai_client()
 
     prompt = f"""You are MedRoster's AI scheduling assistant for a hospital.
 
@@ -73,17 +75,13 @@ Respond ONLY with this exact JSON structure, no extra text:
     return json.loads(response.choices[0].message.content)
 
 
-def analyze_workload_fairness(staff_data: list) -> dict:
+def analyze_workload_fairness(staff_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Analyzes workload distribution and flags burnout risks.
-
-    Args:
-        staff_data: [{"name": str, "role": str, "shifts_this_week": int, "hours_this_week": float}]
-
     Returns:
-        {"fairness_score": int, "at_risk_staff": [...], "recommendations": [...]}
+      {"fairness_score": int, "at_risk_staff": [...], "overall_summary": str, "recommendations": [...]}
     """
-    client = _get_client()
+    client = _get_openai_client()
 
     prompt = f"""You are a hospital workforce wellbeing AI.
 
@@ -119,22 +117,14 @@ Respond ONLY with this exact JSON, no extra text:
 def generate_emergency_reallocation_plan(
     emergency_type: str,
     affected_department: str,
-    on_duty_staff: list,
-    off_duty_staff: list
-) -> dict:
+    on_duty_staff: List[Dict[str, Any]],
+    off_duty_staff: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     """
-    Generates a rapid emergency reallocation plan with voice announcement.
-
-    Returns:
-        {
-          "immediate_reassignments": [...],
-          "call_in_requests": [...],
-          "estimated_coverage_minutes": int,
-          "critical_warning": str,
-          "voice_announcement": str  <-- sent to ElevenLabs
-        }
+    Generates a rapid emergency reallocation plan.
+    Returns JSON including voice_announcement text to be converted via ElevenLabs.
     """
-    client = _get_client()
+    client = _get_openai_client()
 
     prompt = f"""You are MedRoster's Emergency AI. A hospital emergency requires IMMEDIATE action.
 
@@ -183,7 +173,7 @@ Respond ONLY with this exact JSON, no extra text:
 
 def get_scheduling_tip() -> str:
     """Returns a quick AI scheduling tip for the dashboard."""
-    client = _get_client()
+    client = _get_openai_client()
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -200,3 +190,70 @@ def get_scheduling_tip() -> str:
     )
 
     return response.choices[0].message.content
+
+
+# -----------------------------
+# ElevenLabs (Text-to-Speech)
+# -----------------------------
+def _ensure_elevenlabs() -> None:
+    if not ELEVENLABS_API_KEY or ELEVENLABS_API_KEY == "your_elevenlabs_key_here":
+        raise ValueError("ELEVENLABS_API_KEY is not set in your .env file")
+    if not ELEVENLABS_VOICE_ID:
+        raise ValueError("ELEVENLABS_VOICE_ID is not set in your .env file")
+
+
+def text_to_speech_elevenlabs(
+    text: str,
+    voice_id: Optional[str] = None,
+    model_id: str = "eleven_multilingual_v2",
+    stability: float = 0.4,
+    similarity_boost: float = 0.8
+) -> Dict[str, Any]:
+    """
+    Converts text -> speech using ElevenLabs.
+    Returns base64 audio for easy browser playback.
+    """
+    _ensure_elevenlabs()
+
+    if not text or not text.strip():
+        raise ValueError("text is required for text-to-speech")
+
+    vid = voice_id or ELEVENLABS_VOICE_ID
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{vid}"
+
+    headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+    }
+
+    payload = {
+        "text": text.strip(),
+        "model_id": model_id,
+        "voice_settings": {
+            "stability": float(stability),
+            "similarity_boost": float(similarity_boost),
+        },
+    }
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+
+    if resp.status_code >= 400:
+        # Provide readable error to frontend
+        try:
+            err = resp.json()
+        except Exception:
+            err = {"message": resp.text}
+        raise RuntimeError(f"ElevenLabs TTS failed ({resp.status_code}): {err}")
+
+    audio_bytes = resp.content
+    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+    return {
+        "audio_base64": audio_b64,
+        "content_type": "audio/mpeg",
+        "voice_id": vid,
+        "model_id": model_id,
+        "text": text.strip(),
+    }

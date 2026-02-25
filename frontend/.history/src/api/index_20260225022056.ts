@@ -24,8 +24,6 @@ export const userAPI = {
   getAllUsers: () => client.get('/users/'),
   getUser: (userId: number) => client.get(`/users/${userId}`),
   updateUser: (userId: number, data: any) => client.patch(`/users/${userId}`, data),
-  getUsersByRole: (role: string) => client.get(`/users/role/${role}`),
-  getUsersByDepartment: (deptId: number) => client.get(`/users/department/${deptId}`),
 };
 
 // Department APIs
@@ -34,7 +32,6 @@ export const departmentAPI = {
     client.post('/departments', data),
   getDepartments: () => client.get('/departments'),
   getDepartment: (deptId: number) => client.get(`/departments/${deptId}`),
-  updateDepartment: (deptId: number, data: any) => client.patch(`/departments/${deptId}`, data),
   deleteDepartment: (deptId: number) => client.delete(`/departments/${deptId}`),
 };
 
@@ -49,7 +46,6 @@ export const shiftAPI = {
   }) => client.post('/shifts', data),
   getShifts: () => client.get('/shifts'),
   getShift: (shiftId: number) => client.get(`/shifts/${shiftId}`),
-  getShiftsByDepartment: (deptId: number) => client.get(`/shifts/department/${deptId}`),
   updateShift: (shiftId: number, data: any) => client.patch(`/shifts/${shiftId}`, data),
   deleteShift: (shiftId: number) => client.delete(`/shifts/${shiftId}`),
 };
@@ -63,35 +59,15 @@ export const assignmentAPI = {
   }) => client.post('/assignments', data),
   getAssignments: () => client.get('/assignments'),
   getAssignment: (assignmentId: number) => client.get(`/assignments/${assignmentId}`),
-  getAssignmentsByUser: (userId: number) => client.get(`/assignments/user/${userId}`),
-  getAssignmentsByShift: (shiftId: number) => client.get(`/assignments/shift/${shiftId}`),
-  updateAssignment: (assignmentId: number, data: any) => client.patch(`/assignments/${assignmentId}`, data),
   deleteAssignment: (assignmentId: number) => client.delete(`/assignments/${assignmentId}`),
 };
 
-// AI APIs - OpenAI & 11 Labs Integration
+// AI APIs
 export const aiAPI = {
-  // Get scheduling suggestions using OpenAI
-  getSchedulingSuggestions: (shiftId: number) =>
-    client.post('/ai/schedule-suggestions', { shift_id: shiftId }),
-  
-  // Generate announcement using OpenAI
-  generateAnnouncement: (message: string) =>
-    client.post('/ai/generate-announcement', { message }),
-  
-  // Convert text to speech using 11 Labs
-  textToSpeech: (message: string, language: string = 'en') =>
-    client.post('/ai/text-to-speech', { message, language }, { responseType: 'blob' }),
-  
-  // Get scheduling recommendations
-  getRecommendations: (departmentId: number, criteria?: any) =>
-    client.post(`/ai/recommendations`, { department_id: departmentId, ...criteria }),
-  
-  // Analyze workload
-  analyzeWorkload: (departmentId: number) =>
-    client.post('/ai/analyze-workload', { department_id: departmentId }),
-  
-  // Get AI tip
+  suggestSchedule: (data: { staff: any[]; shifts: any[]; context?: string }) =>
+    client.post('/ai/suggest-schedule', data),
+  analyzeWorkload: (data: { staff_data: any[] }) =>
+    client.post('/ai/analyze-workload', data),
   getTip: () => client.get('/ai/tip'),
 };
 

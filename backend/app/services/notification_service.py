@@ -1,12 +1,14 @@
 """
 MedRoster Notification Service
-Uses ElevenLabs SDK for voice alerts.
+Uses ElevenLabs REST API for voice alerts.
 """
 
 import os
-from app.config import ELEVEN_LABS_API_KEY
+import requests
+from app.config import ELEVENLABS_API_KEY as ELEVEN_LABS_API_KEY
 
 DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+ELEVEN_LABS_BASE_URL = "https://api.elevenlabs.io/v1"
 
 
 def generate_voice_alert(text: str, filename: str = "alert.mp3"):
@@ -15,21 +17,28 @@ def generate_voice_alert(text: str, filename: str = "alert.mp3"):
         return None
 
     try:
-        from elevenlabs.client import ElevenLabs
+        url = f"{ELEVEN_LABS_BASE_URL}/text-to-speech/{DEFAULT_VOICE_ID}"
+        
+        headers = {
+            "xi-api-key": ELEVEN_LABS_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.75
+            }
+        }
 
-        client = ElevenLabs(api_key=ELEVEN_LABS_API_KEY)
-
-        audio = client.text_to_speech.convert(
-            text=text,
-            voice_id=DEFAULT_VOICE_ID,
-            model_id="eleven_multilingual_v2",
-            output_format="mp3_44100_128",
-        )
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
 
         output_path = f"/tmp/{filename}"
         with open(output_path, "wb") as f:
-            for chunk in audio:
-                f.write(chunk)
+            f.write(response.content)
 
         print(f"[ElevenLabs] Voice alert saved: {output_path}")
         return output_path

@@ -15,7 +15,7 @@ interface RegisterInput {
   name: string;
   email: string;
   password: string;
-  role: UserRole;
+  role: string;
   department_id: number;
 }
 
@@ -86,7 +86,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const payload: RegisterInput = {
         ...data,
-        role: (data.role as UserRole) || 'staff',
         department_id: 0, // REQUIRED by backend schema (Swagger shows this)
       };
 

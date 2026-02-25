@@ -432,9 +432,9 @@ export const DashboardPage: React.FC = () => {
                 </Button>
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Grid container spacing={2}>
                 {departments.map((dept) => (
-                  <Box sx={{ flex: { xs: '0 0 100%', sm: '0 0 calc(50% - 8px)', md: '0 0 calc(33.33% - 12px)' } }} key={dept.id}>
+                  <Grid sx={{ gridColumn: { xs: '1 / -1', sm: 'span 6', md: 'span 4' } }} key={dept.id}>
                     <Card sx={{ borderRadius: 2, border: '1px solid #e6e8ef', '&:hover': { boxShadow: 3 } }}>
                       <CardContent>
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -445,9 +445,9 @@ export const DashboardPage: React.FC = () => {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Box>
+                  </Grid>
                 ))}
-              </Box>
+              </Grid>
             </Paper>
           </PermissionGuard>
 

@@ -445,9 +445,9 @@ export const DashboardPage: React.FC = () => {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </Box>
+                  </Grid>
                 ))}
-              </Box>
+              </Grid>
             </Paper>
           </PermissionGuard>
 
