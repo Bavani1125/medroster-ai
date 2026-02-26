@@ -18,3 +18,29 @@ venv/
 # Node
 **/node_modules/
 **/build/
+
+# ---- Secrets / env ----
+.env
+.env.*
+**/.env
+**/.env.*
+
+# ---- Editor history (THIS caused your blocked push) ----
+.history/
+**/.history/
+
+# ---- Python ----
+venv/
+__pycache__/
+*.pyc
+
+# ---- Node ----
+node_modules/
+build/
+dist/
+
+# ---- DB ----
+*.db
+*.sqlite
+*.sqlite3
+

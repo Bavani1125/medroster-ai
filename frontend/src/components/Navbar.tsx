@@ -1,5 +1,3 @@
-// /Users/sunilganta/Documents/medroster-frontend/src/components/Navbar.tsx
-
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -9,144 +7,91 @@ import {
   Button,
   Box,
   Chip,
-  Divider,
+  Stack,
+  IconButton,
 } from '@mui/material';
-import { useAuth } from '../context/AuthContext';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-
-const roleColor = (role?: string) => {
-  switch ((role || '').toLowerCase()) {
-    case 'admin':
-      return { bg: '#111827', fg: '#ffffff' };
-    case 'manager':
-      return { bg: '#1f2937', fg: '#ffffff' };
-    case 'doctor':
-      return { bg: '#0ea5e9', fg: '#082f49' };
-    case 'nurse':
-      return { bg: '#22c55e', fg: '#052e16' };
-    default:
-      return { bg: '#e5e7eb', fg: '#111827' };
-  }
-};
+import { useAuth } from '../context/AuthContext';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 
-  // You already hide Navbar for /public routes in App.tsx, but keeping this safe
-  const isPublicRoute = location.pathname.startsWith('/public');
-  if (isPublicRoute) return null;
-
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const { bg, fg } = roleColor(user?.role);
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <AppBar
       position="sticky"
-      elevation={0}
       sx={{
-        bgcolor: 'rgba(17, 24, 39, 0.85)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        background: 'linear-gradient(90deg, #0f172a 0%, #111827 55%, #0f172a 100%)',
       }}
     >
-      <Toolbar sx={{ minHeight: 72, display: 'flex', gap: 2 }}>
-        {/* Brand */}
-        <Box
-          onClick={() => navigate('/')}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.25,
-            cursor: 'pointer',
-            userSelect: 'none',
-          }}
-        >
-          <LocalHospitalIcon sx={{ color: '#ffffff' }} />
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1, color: '#fff' }}>
+      <Toolbar sx={{ minHeight: 68 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1 }}>
+          <IconButton
+            onClick={() => navigate('/')}
+            sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 2 }}
+          >
+            <LocalHospitalIcon />
+          </IconButton>
+
+          <Box sx={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
+            <Typography variant="h6" sx={{ color: 'white', lineHeight: 1.1 }}>
               MedRoster
             </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.70)' }}>
               Workforce + Voice Ops
             </Typography>
           </Box>
-        </Box>
+        </Stack>
 
-        {/* Spacer */}
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* Nav actions */}
+        {/* right actions */}
         {isAuthenticated && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap' }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
             <Button
-              variant={location.pathname.startsWith('/dashboard') ? 'contained' : 'text'}
-              startIcon={<DashboardIcon />}
               onClick={() => navigate('/dashboard')}
+              variant={isActive('/dashboard') ? 'contained' : 'text'}
+              startIcon={<DashboardIcon />}
               sx={{
-                fontWeight: 700,
-                color: location.pathname.startsWith('/dashboard') ? '#111827' : '#fff',
-                bgcolor: location.pathname.startsWith('/dashboard') ? '#ffffff' : 'transparent',
-                '&:hover': {
-                  bgcolor: location.pathname.startsWith('/dashboard')
-                    ? '#f3f4f6'
-                    : 'rgba(255,255,255,0.08)',
-                },
-                borderRadius: 2,
-                textTransform: 'none',
+                color: 'white',
+                bgcolor: isActive('/dashboard') ? 'rgba(255,255,255,0.14)' : 'transparent',
               }}
             >
               Dashboard
             </Button>
 
             <Button
-              variant={location.pathname.startsWith('/public/updates') ? 'contained' : 'text'}
-              startIcon={<CampaignIcon />}
               onClick={() => navigate('/public/updates')}
+              variant={isActive('/public/updates') ? 'contained' : 'text'}
+              startIcon={<CampaignIcon />}
               sx={{
-                fontWeight: 700,
-                color: location.pathname.startsWith('/public/updates') ? '#111827' : '#fff',
-                bgcolor: location.pathname.startsWith('/public/updates') ? '#ffffff' : 'transparent',
-                '&:hover': {
-                  bgcolor: location.pathname.startsWith('/public/updates')
-                    ? '#f3f4f6'
-                    : 'rgba(255,255,255,0.08)',
-                },
-                borderRadius: 2,
-                textTransform: 'none',
+                color: 'white',
+                bgcolor: isActive('/public/updates') ? 'rgba(255,255,255,0.14)' : 'transparent',
               }}
             >
               Public Updates
             </Button>
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ borderColor: 'rgba(255,255,255,0.12)', mx: 0.5 }}
-            />
-
-            {/* User chip */}
             <Chip
-              label={user?.role ? user.role.toUpperCase() : 'USER'}
-              size="small"
+              label={(user?.role || 'staff').toUpperCase()}
               sx={{
-                bgcolor: bg,
-                color: fg,
+                bgcolor: 'rgba(255,255,255,0.10)',
+                color: 'white',
                 fontWeight: 800,
-                letterSpacing: 0.5,
               }}
             />
 
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
-              {user?.name || 'User'}
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+              {user?.name}
             </Typography>
 
             <Button
@@ -154,33 +99,14 @@ export const Navbar: React.FC = () => {
               startIcon={<LogoutIcon />}
               onClick={handleLogout}
               sx={{
-                fontWeight: 700,
-                borderRadius: 2,
-                textTransform: 'none',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+                border: '1px solid rgba(255,255,255,0.18)',
+                borderRadius: 3,
+                px: 1.5,
               }}
             >
               Logout
             </Button>
-          </Box>
-        )}
-
-        {/* If not authenticated */}
-        {!isAuthenticated && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              onClick={() => navigate('/login')}
-              sx={{
-                fontWeight: 700,
-                color: '#fff',
-                borderRadius: 2,
-                textTransform: 'none',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
-              }}
-            >
-              Login
-            </Button>
-          </Box>
+          </Stack>
         )}
       </Toolbar>
     </AppBar>

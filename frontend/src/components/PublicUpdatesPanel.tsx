@@ -1,28 +1,55 @@
-// /Users/sunilganta/Documents/medroster-frontend/src/pages/PublicUpdatesPage.tsx
-
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Box,
   Container,
   Paper,
   Typography,
-  Button,
   TextField,
   MenuItem,
+  Button,
+  Box,
   Alert,
   CircularProgress,
   Chip,
   Divider,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
 } from '@mui/material';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import ReplayIcon from '@mui/icons-material/Replay';
 import TranslateIcon from '@mui/icons-material/Translate';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import DirectionsIcon from '@mui/icons-material/Directions';
+import LocalPoliceIcon from '@mui/icons-material/LocalPolice';
+
 import { publicAPI } from '../api';
 
 type Dept = { id: number; name: string };
 type UpdateType = 'wait_time' | 'visiting' | 'directions' | 'safety';
+
+const UPDATE_META: Record<UpdateType, { label: string; icon: React.ReactNode; helper: string }> = {
+  wait_time: {
+    label: 'Wait Time',
+    icon: <AccessTimeIcon fontSize="small" />,
+    helper: 'General queue/wait guidance (no patient-specific info).',
+  },
+  visiting: {
+    label: 'Visiting',
+    icon: <InfoOutlinedIcon fontSize="small" />,
+    helper: 'Visiting hours, policy reminders, and entry rules.',
+  },
+  directions: {
+    label: 'Directions',
+    icon: <DirectionsIcon fontSize="small" />,
+    helper: 'Where to go next (desk, elevator, floor, room zone).',
+  },
+  safety: {
+    label: 'Safety',
+    icon: <LocalPoliceIcon fontSize="small" />,
+    helper: 'Safety notices: masks, restricted areas, alerts.',
+  },
+};
 
 export default function PublicUpdatesPage() {
   const [departments, setDepartments] = useState<Dept[]>([]);
@@ -30,82 +57,40 @@ export default function PublicUpdatesPage() {
   const [language, setLanguage] = useState<'en' | 'es'>('en');
   const [updateType, setUpdateType] = useState<UpdateType>('wait_time');
   const [customNote, setCustomNote] = useState('');
-  const [loadingDeps, setLoadingDeps] = useState(true);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-
-  // Response fields
   const [transcript, setTranscript] = useState('');
   const [audioSrc, setAudioSrc] = useState('');
-  const [coveragePct, setCoveragePct] = useState<number | null>(null);
-  const [estimatedWaitMin, setEstimatedWaitMin] = useState<number | null>(null);
+  const [autoplay, setAutoplay] = useState(true);
 
   useEffect(() => {
     (async () => {
-      setLoadingDeps(true);
-      setErr('');
       try {
         const res = await publicAPI.getDepartments();
-        const list = res.data || [];
-        setDepartments(list);
-        if (list.length) setDepartmentId(list[0].id);
+        setDepartments(res.data || []);
+        if (res.data?.length) setDepartmentId(res.data[0].id);
       } catch (e: any) {
         setErr(e?.response?.data?.detail || 'Failed to load departments');
-      } finally {
-        setLoadingDeps(false);
       }
     })();
   }, []);
 
-  const selectedDept = useMemo(() => {
-    return departments.find((d) => d.id === departmentId) || null;
+  const deptName = useMemo(() => {
+    const d = departments.find((x) => x.id === departmentId);
+    return d?.name || '';
   }, [departments, departmentId]);
-
-  const title = language === 'es' ? 'Actualizaciones Públicas' : 'Public Updates';
-  const subtitle =
-    language === 'es'
-      ? 'Toque para escuchar una actualización. No se muestra información personal.'
-      : 'Tap to hear an update. No personal medical information is shown.';
-
-  const primaryCta =
-    language === 'es' ? 'Reproducir actualización de voz' : 'Play voice update';
-  const replayCta = language === 'es' ? 'Repetir' : 'Replay';
-
-  const updateTypeLabel = (t: UpdateType) => {
-    if (language === 'es') {
-      if (t === 'wait_time') return 'Tiempo de espera';
-      if (t === 'visiting') return 'Visitas';
-      if (t === 'directions') return 'Indicaciones';
-      return 'Seguridad';
-    }
-    if (t === 'wait_time') return 'Wait Time';
-    if (t === 'visiting') return 'Visiting';
-    if (t === 'directions') return 'Directions';
-    return 'Safety';
-  };
-
-  const playAudio = async (src: string) => {
-    const audio = new Audio();
-    audio.src = src;
-    audio.load();
-    await audio.play();
-  };
 
   const handleGenerate = async () => {
     setErr('');
     setTranscript('');
     setAudioSrc('');
-    setCoveragePct(null);
-    setEstimatedWaitMin(null);
-
     if (!departmentId) {
-      setErr(language === 'es' ? 'Seleccione un departamento.' : 'Select a department.');
+      setErr('Select a department.');
       return;
     }
 
     setLoading(true);
     try {
-      // Calls backend patient-safe endpoint
       const res = await publicAPI.generateVoiceUpdate({
         department_id: departmentId as number,
         language,
@@ -116,34 +101,21 @@ export default function PublicUpdatesPage() {
       const audioBase64 = res.data?.audio_base64;
       const contentType = res.data?.content_type || 'audio/mpeg';
       const t = res.data?.transcript || '';
-      const cov = typeof res.data?.coverage_pct === 'number' ? res.data.coverage_pct : null;
-      const wait = typeof res.data?.estimated_wait_min === 'number' ? res.data.estimated_wait_min : null;
 
-      if (!audioBase64 || typeof audioBase64 !== 'string') {
-        console.log('PUBLIC_UPDATE_BAD_RESPONSE', res.data);
-        throw new Error('Missing audio_base64 in response');
-      }
+      if (!audioBase64) throw new Error('Missing audio_base64 in response');
 
       const src = `data:${contentType};base64,${audioBase64}`;
       setTranscript(t);
       setAudioSrc(src);
-      setCoveragePct(cov);
-      setEstimatedWaitMin(wait);
 
-      await playAudio(src);
+      if (autoplay) {
+        const audio = new Audio(src);
+        await audio.play();
+      }
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || e?.message || 'Failed to generate update');
+      setErr(e?.response?.data?.detail || e?.message || 'Failed to generate voice update');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleReplay = async () => {
-    if (!audioSrc) return;
-    try {
-      await playAudio(audioSrc);
-    } catch (e) {
-      // ignore
     }
   };
 
@@ -151,72 +123,93 @@ export default function PublicUpdatesPage() {
     <Box
       sx={{
         minHeight: '100vh',
-        bgcolor: '#0b1220',
-        backgroundImage:
-          'radial-gradient(1000px 500px at 20% 0%, rgba(59,130,246,0.35), transparent), radial-gradient(900px 500px at 80% 10%, rgba(34,197,94,0.25), transparent)',
-        py: { xs: 3, md: 6 },
+        background:
+          'radial-gradient(1200px 600px at 50% 0%, rgba(37,99,235,0.22), transparent 62%), linear-gradient(180deg, #0b1220 0%, #0f172a 30%, #f6f7fb 30%, #f6f7fb 100%)',
+        py: { xs: 3, sm: 5 },
       }}
     >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={0}
+      <Container maxWidth="md">
+        {/* Top strip */}
+        <Box
           sx={{
-            p: { xs: 2.5, md: 3.5 },
-            borderRadius: 4,
-            bgcolor: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            backdropFilter: 'blur(10px)',
+            mb: 2.5,
+            px: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            color: 'white',
+            gap: 2,
+            flexWrap: 'wrap',
           }}
         >
-          {/* Header */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
-            <LocalHospitalIcon sx={{ color: 'rgba(255,255,255,0.9)' }} />
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ color: '#fff', fontWeight: 900, letterSpacing: 0.2 }} variant="h5">
-                MedRoster Public Voice
-              </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.75)' }} variant="body2">
-                {subtitle}
-              </Typography>
-            </Box>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.02em' }}>
+              MedRoster Public Voice
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.85 }}>
+              Updates for patients & families — no login
+            </Typography>
+          </Box>
 
+          <Stack direction="row" spacing={1} alignItems="center">
             <Chip
-              icon={<InfoOutlinedIcon />}
-              label={language === 'es' ? 'Sin PHI' : 'No PHI'}
-              size="small"
+              icon={<VerifiedUserIcon />}
+              label="No PHI"
               sx={{
                 bgcolor: 'rgba(255,255,255,0.12)',
-                color: '#fff',
+                color: 'white',
                 fontWeight: 800,
               }}
             />
+            <Chip
+              icon={<TranslateIcon />}
+              label={language === 'en' ? 'English' : 'Spanish'}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.12)',
+                color: 'white',
+                fontWeight: 800,
+              }}
+            />
+          </Stack>
+        </Box>
+
+        {/* Main card */}
+        <Paper elevation={0} sx={{ borderRadius: 4, overflow: 'hidden' }}>
+          {/* Header */}
+          <Box
+            sx={{
+              p: { xs: 2.5, sm: 3 },
+              background:
+                'linear-gradient(90deg, rgba(37,99,235,0.10) 0%, rgba(219,39,119,0.08) 50%, rgba(2,6,23,0.0) 100%)',
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>
+              Tap to generate a voice update
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Designed for lobby screens, waiting rooms, and help desks.
+            </Typography>
           </Box>
 
-          {/* Controls */}
-          {err && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {err}
-            </Alert>
-          )}
+          <Divider />
 
-          {loadingDeps ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <>
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
+          <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
+            {err && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {err}
+              </Alert>
+            )}
+
+            {/* Controls */}
+            <Stack spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <TextField
                   select
                   fullWidth
-                  label={language === 'es' ? 'Departamento' : 'Department'}
+                  label="Department"
                   value={departmentId}
                   onChange={(e) => setDepartmentId(Number(e.target.value))}
-                  sx={{ flex: '1 1 240px' }}
-                  InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.8)' } }}
-                  InputProps={{
-                    sx: { color: '#fff' },
-                  }}
+                  helperText="Pick a department / unit"
                 >
                   {departments.map((d) => (
                     <MenuItem key={d.id} value={d.id}>
@@ -228,180 +221,120 @@ export default function PublicUpdatesPage() {
                 <TextField
                   select
                   fullWidth
-                  label={language === 'es' ? 'Idioma' : 'Language'}
+                  label="Language"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as 'en' | 'es')}
-                  sx={{ flex: '1 1 180px' }}
-                  InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.8)' } }}
-                  InputProps={{
-                    sx: { color: '#fff' },
-                  }}
+                  helperText="Multilingual support"
                 >
-                  <MenuItem value="en">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <TranslateIcon fontSize="small" /> English
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="es">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <TranslateIcon fontSize="small" /> Español
-                    </Box>
-                  </MenuItem>
+                  <MenuItem value="en">English</MenuItem>
+                  <MenuItem value="es">Spanish</MenuItem>
                 </TextField>
-              </Box>
+              </Stack>
 
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 2 }}>
-                <TextField
-                  select
-                  fullWidth
-                  label={language === 'es' ? 'Tipo de actualización' : 'Update Type'}
+              {/* Update Type as pill toggles (more kiosk-friendly) */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                  Update Type
+                </Typography>
+                <ToggleButtonGroup
                   value={updateType}
-                  onChange={(e) => setUpdateType(e.target.value as UpdateType)}
-                  sx={{ flex: '1 1 240px' }}
-                  InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.8)' } }}
-                  InputProps={{
-                    sx: { color: '#fff' },
+                  exclusive
+                  onChange={(_, v) => v && setUpdateType(v)}
+                  sx={{
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    '& .MuiToggleButton-root': {
+                      borderRadius: 999,
+                      px: 2,
+                      py: 1,
+                      border: '1px solid rgba(15,23,42,0.10)',
+                    },
                   }}
                 >
-                  <MenuItem value="wait_time">{updateTypeLabel('wait_time')}</MenuItem>
-                  <MenuItem value="visiting">{updateTypeLabel('visiting')}</MenuItem>
-                  <MenuItem value="directions">{updateTypeLabel('directions')}</MenuItem>
-                  <MenuItem value="safety">{updateTypeLabel('safety')}</MenuItem>
-                </TextField>
-
-                <TextField
-                  fullWidth
-                  label={language === 'es' ? 'Nota opcional' : 'Optional Note'}
-                  value={customNote}
-                  onChange={(e) => setCustomNote(e.target.value)}
-                  placeholder={language === 'es' ? 'Ej: Mascarilla requerida hoy.' : 'e.g., Mask required today.'}
-                  sx={{ flex: '1 1 240px' }}
-                  InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.8)' } }}
-                  InputProps={{
-                    sx: { color: '#fff' },
-                  }}
-                />
+                  {(Object.keys(UPDATE_META) as UpdateType[]).map((k) => (
+                    <ToggleButton key={k} value={k}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        {UPDATE_META[k].icon}
+                        <span>{UPDATE_META[k].label}</span>
+                      </Stack>
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                  {UPDATE_META[updateType].helper}
+                </Typography>
               </Box>
 
-              {/* Stats strip (shows impact) */}
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-                <Chip
-                  label={
-                    selectedDept
-                      ? `${selectedDept.name}`
-                      : language === 'es'
-                        ? 'Departamento'
-                        : 'Department'
-                  }
-                  sx={{ bgcolor: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 800 }}
-                />
-                <Chip
-                  label={`${updateTypeLabel(updateType)}`}
-                  sx={{ bgcolor: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 800 }}
-                />
-                {typeof coveragePct === 'number' && (
-                  <Chip
-                    label={language === 'es' ? `Cobertura: ${coveragePct}%` : `Coverage: ${coveragePct}%`}
-                    sx={{ bgcolor: 'rgba(34,197,94,0.18)', color: '#dcfce7', fontWeight: 900 }}
-                  />
-                )}
-                {typeof estimatedWaitMin === 'number' && updateType === 'wait_time' && (
-                  <Chip
-                    label={language === 'es' ? `Espera: ~${estimatedWaitMin} min` : `Wait: ~${estimatedWaitMin} min`}
-                    sx={{ bgcolor: 'rgba(59,130,246,0.18)', color: '#dbeafe', fontWeight: 900 }}
-                  />
-                )}
-              </Box>
+              <TextField
+                fullWidth
+                label="Optional Note"
+                value={customNote}
+                onChange={(e) => setCustomNote(e.target.value)}
+                placeholder="Example: Mask required in ICU today. Please check in at the front desk."
+                helperText="Keep it general. Avoid names / MRNs / private info."
+              />
 
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)', my: 2 }} />
-
-              {/* Primary actions */}
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                 <Button
                   variant="contained"
                   size="large"
-                  fullWidth
                   startIcon={loading ? <CircularProgress size={18} /> : <VolumeUpIcon />}
                   onClick={handleGenerate}
                   disabled={loading}
-                  sx={{
-                    fontWeight: 900,
-                    borderRadius: 3,
-                    py: 1.4,
-                    bgcolor: '#ffffff',
-                    color: '#0b1220',
-                    '&:hover': { bgcolor: '#f3f4f6' },
-                    textTransform: 'none',
-                  }}
+                  sx={{ px: 2.5, py: 1.2, flex: 1 }}
                 >
-                  {loading ? (language === 'es' ? 'Generando...' : 'Generating...') : primaryCta}
+                  {loading ? 'Generating...' : 'Generate Voice Update'}
                 </Button>
 
                 <Button
                   variant="outlined"
-                  size="large"
-                  fullWidth
-                  startIcon={<ReplayIcon />}
-                  onClick={handleReplay}
-                  disabled={!audioSrc || loading}
-                  sx={{
-                    fontWeight: 900,
-                    borderRadius: 3,
-                    py: 1.4,
-                    color: '#fff',
-                    borderColor: 'rgba(255,255,255,0.22)',
-                    '&:hover': { borderColor: 'rgba(255,255,255,0.35)', bgcolor: 'rgba(255,255,255,0.06)' },
-                    textTransform: 'none',
-                  }}
+                  onClick={() => setAutoplay((v) => !v)}
+                  sx={{ px: 2.5, py: 1.2, width: { xs: '100%', sm: 'auto' } }}
                 >
-                  {replayCta}
+                  Autoplay: {autoplay ? 'On' : 'Off'}
                 </Button>
-              </Box>
+              </Stack>
 
               {/* Output */}
-              {audioSrc && (
-                <Box sx={{ mt: 2 }}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 3,
-                      bgcolor: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                    }}
-                  >
-                    <Typography sx={{ color: '#fff', fontWeight: 900 }} variant="subtitle1">
-                      {language === 'es' ? 'Vista previa' : 'Preview'}
-                    </Typography>
-                    <audio controls src={audioSrc} style={{ width: '100%', marginTop: 10 }} />
-                    {transcript && (
-                      <Typography sx={{ color: 'rgba(255,255,255,0.75)', mt: 1 }} variant="body2">
-                        <strong style={{ color: '#fff' }}>
-                          {language === 'es' ? 'Transcripción:' : 'Transcript:'}
-                        </strong>{' '}
+              {(audioSrc || transcript) && (
+                <Paper
+                  elevation={0}
+                  sx={{
+                    mt: 1,
+                    p: 2,
+                    borderRadius: 3,
+                    bgcolor: 'rgba(15,23,42,0.02)',
+                    border: '1px solid rgba(15,23,42,0.08)',
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1 }}>
+                    {deptName} • Preview
+                  </Typography>
+
+                  {audioSrc && <audio controls src={audioSrc} style={{ width: '100%' }} />}
+
+                  {transcript && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                        Transcript
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
                         {transcript}
                       </Typography>
-                    )}
-                  </Paper>
-                </Box>
+                    </Box>
+                  )}
+                </Paper>
               )}
-            </>
-          )}
+            </Stack>
+          </Box>
         </Paper>
 
-        {/* Bottom note */}
+        {/* Footer */}
         <Typography
           variant="caption"
-          sx={{
-            display: 'block',
-            textAlign: 'center',
-            mt: 2,
-            color: 'rgba(255,255,255,0.6)',
-          }}
+          sx={{ display: 'block', textAlign: 'center', mt: 2.5, color: 'rgba(15,23,42,0.55)' }}
         >
-          {language === 'es'
-            ? 'Nota: Esta página proporciona actualizaciones generales. Para emergencias, llame al 911.'
-            : 'Note: This page provides general updates. For emergencies, call 911.'}
+          Powered by AI + voice. Designed for real-time clarity during high-stress hospital moments.
         </Typography>
       </Container>
     </Box>
